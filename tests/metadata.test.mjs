@@ -17,3 +17,10 @@ test('slug stays tied to filename; personal metadata is not exported', () => {
 test('malformed YAML and duplicate keys fail closed', () => {
   for (const yaml of ['publish: [', 'publish: true\npublish: false', '- item']) assert.throws(() => frontmatter(`---\n${yaml}\n---\n`, 'test'));
 });
+
+test('category is optional for approved notes and is never required for publication', () => {
+  const { category: _category, ...withoutCategory } = valid;
+  const exported = metadata(withoutCategory, 'Quick Note.md');
+  assert.ok(!Object.hasOwn(exported, 'category'));
+  assert.equal(exported.slug, 'quick-note');
+});

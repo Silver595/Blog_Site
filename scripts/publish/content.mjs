@@ -13,9 +13,10 @@ export function frontmatter(raw, label) {
   return { data, body: raw.slice(match[0].length) };
 }
 export function metadata(data, filename) {
-  for (const key of ['title', 'description', 'category', 'date']) {
+  for (const key of ['title', 'description', 'date']) {
     if (typeof data[key] !== 'string' || !data[key].trim()) throw new Error(`${filename}: ${key} must be a nonempty string`);
   }
+  if (data.category !== undefined && (typeof data.category !== 'string' || !data.category.trim())) throw new Error(`${filename}: category must be a nonempty string when present`);
   if (!/^\d{4}-\d{2}-\d{2}$/.test(data.date) || !Number.isFinite(Date.parse(data.date)) || new Date(data.date).toISOString().slice(0, 10) !== data.date) throw new Error(`${filename}: date must be a real YYYY-MM-DD date`);
   if (data.tags !== undefined && (!Array.isArray(data.tags) || data.tags.some(tag => typeof tag !== 'string' || !tag.trim()))) throw new Error(`${filename}: tags must be a list of strings`);
   const slug = data.slug ?? filename.replace(/\.md$/i, '').normalize('NFKD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
@@ -24,7 +25,7 @@ export function metadata(data, filename) {
   if (data.learningPath !== undefined && (typeof data.learningPath !== 'string' || !data.learningPath.trim())) throw new Error(`${filename}: learningPath must be a nonempty string`);
   if (data.lesson !== undefined && (!Number.isSafeInteger(data.lesson) || data.lesson < 1)) throw new Error(`${filename}: lesson must be a positive integer`);
   if ((data.learningPath === undefined) !== (data.lesson === undefined)) throw new Error(`${filename}: learningPath and lesson must be provided together`);
-  return { title: data.title, description: data.description, date: data.date, category: data.category, tags: data.tags ?? [], slug, publish: true, draft: false, featured: data.featured === true,
+  return { title: data.title, description: data.description, date: data.date, ...(data.category !== undefined ? { category: data.category } : {}), tags: data.tags ?? [], slug, publish: true, draft: false, featured: data.featured === true,
     ...(data.learningPath !== undefined ? { learningPath: data.learningPath.trim(), lesson: data.lesson } : {}) };
 }
 export function serialize(data, body) { return `---\n${stringify(data)}---\n\n${body}`; }
