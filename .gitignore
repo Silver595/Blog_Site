@@ -1,3 +1,8 @@
-.idea
-node_modules
-api/uploads/*
+node_modules/
+dist/
+.env
+.env.*
+!.env.example
+*.log
+*.tsbuildinfo
+.DS_Store

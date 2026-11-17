@@ -1,32 +1,55 @@
-<h2 align="left">Hi 👋! My name is Silver and I'm a Student, from |-_-| </h2>
+# Silver Life — independent technical knowledge website
 
-###
+This repository is the **standalone** website for the Silver Life knowledge library, based on the supplied Figma design. It is **not** part of the portfolio site.
 
-<div align="center">
-  <img src="https://github-readme-stats.vercel.app/api?username=Silver595&hide_title=false&hide_rank=false&show_icons=true&include_all_commits=true&count_private=true&disable_animations=false&theme=dracula&locale=en&hide_border=false" height="150" alt="stats graph"  />
-  <img src="https://github-readme-stats.vercel.app/api/top-langs?username=Silver595&locale=en&hide_title=false&layout=compact&card_width=320&langs_count=5&theme=dracula&hide_border=false" height="150" alt="languages graph"  />
-</div>
+## Stack
 
-###
+React 19, React Router, Vite, Tailwind CSS 4, TypeScript, React Markdown, YAML. Static site: no MongoDB, Express API, user accounts or runtime database.
 
-<br clear="both">
+## Local development
 
-<div align="center">
-  <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/javascript/javascript-original.svg" height="30" alt="javascript logo"  />
-  <img width="12" />
-  <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/typescript/typescript-original.svg" height="30" alt="typescript logo"  />
-  <img width="12" />
-  <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/react/react-original.svg" height="30" alt="react logo"  />
-  <img width="12" />
-  <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/python/python-original.svg" height="30" alt="python logo"  />
-  <img width="12" />
-  <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/docker/docker-original.svg" height="30" alt="docker logo"  />
-  <img width="12" />
-  <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/linux/linux-original.svg" height="30" alt="linux logo"  />
-  <img width="12" />
-  <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/nextjs/nextjs-original.svg" height="30" alt="nextjs logo"  />
-  <img width="12" />
-  <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/nodejs/nodejs-original.svg" height="30" alt="nodejs logo"  />
-  <img width="12" />
-  <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/yarn/yarn-original.svg" height="30" alt="yarn logo"  />
-</div>
+Requires Node.js 20.19+ or 22.12+.
+
+```bash
+npm install
+npm run dev
+npm run typecheck
+npm run build
+```
+
+## Publish Markdown from Obsidian
+
+Create a **separate public publishing folder or vault**; never sync your private vault to this public repo.
+
+Add approved Markdown files under `src/content/posts/`. Every article needs YAML frontmatter:
+
+```yaml
+---
+title: How DNS resolution works
+description: A practical walkthrough of DNS.
+date: 2026-11-17
+category: Networking
+tags: [dns, networking]
+featured: false
+publish: true
+---
+```
+
+Articles marked `publish: true` are displayed, unless `draft: true` is also set. Important: an unpublished file in a **public repository is still publicly readable**, so do not commit personal notes.
+
+Use standard Markdown syntax for links, code blocks, tables and images. Put public images under `public/media/` and link them using `![Alt](/media/filename.png)`.
+
+The website loads posts at **build time**. New or edited Markdown files require a new Git commit and Vercel build. Obsidian's `[[wikilinks]]` and `![[embedded files]]` are not yet converted; use standard Markdown in published notes.
+
+## GitHub → Vercel deployment
+
+In Vercel, create a project and import `Silver595/Blog_Site`. Framework: **Vite**; root directory: `./`; build command: `npm run build`; output directory: `dist`. Pushes to `main` should trigger deployment when Vercel is connected.
+
+## Planned automation
+
+- Obsidian-approved note exporter and media copying
+- Selective publication without exposing private notes
+- Tests for frontmatter, local assets and internal links
+- Optional search, tags, RSS and sitemap
+
+The initial migration replaces the former Express/MongoDB application. Previous commits remain available for recovery.
