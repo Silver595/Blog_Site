@@ -33,3 +33,9 @@ npm run build
 Review the generated files, commit them, and push to the existing Vercel-connected
 GitHub repository. See [the audit](docs/AUDIT.md) for verified findings, remaining
 features and current environment verification limits. No database or CMS is needed.
+
+## Knowledge library
+
+Browse `/posts` to search article text or filter topics. Articles include a table
+of contents, reading time, highlighted/copyable code, related notes and adjacent
+article navigation. See [implementation and verification notes](docs/KNOWLEDGE_LIBRARY.md).
