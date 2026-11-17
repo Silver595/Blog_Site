@@ -9,6 +9,7 @@
     "typecheck": "tsc --noEmit",
     "preview": "vite preview",
     "publish:notes": "node scripts/publish/index.mjs",
+    "publish:site": "node scripts/publish/site.mjs",
     "validate:content": "node scripts/validate/content.mjs",
     "test": "node --test tests/*.test.mjs",
     "check": "npm run typecheck && npm run validate:content && npm test",

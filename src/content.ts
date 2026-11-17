@@ -35,7 +35,7 @@ function decodeArticle(path: string, raw: string): Article | null {
     slug,
     title: String(metadata.title),
     description: String(metadata.description ?? ""),
-    category: String(metadata.category ?? "Notes"),
+    category: String(metadata.category ?? ""),
     date: String(metadata.date),
     featured: metadata.featured === true,
     tags: Array.isArray(metadata.tags) ? metadata.tags.map(String) : [],

@@ -20,8 +20,7 @@ npm run build
 ## Publish from a private Obsidian vault
 
 Follow [the setup and publishing guide](docs/OBSIDIAN_SETUP.md). The vault stays
-outside the repository. The local CLI exports only explicitly approved, non-draft
-notes and their referenced approved media; it never commits or pushes for you.
+outside the repository. The local exporter copies only explicitly approved, non-draft notes and their referenced approved media. The optional `publish:site` wrapper validates, builds, commits and (with an explicit flag) pushes generated content.
 
 ```bash
 npm run publish:notes -- --vault /absolute/path/to/private/vault --dry-run
@@ -36,6 +35,6 @@ features and current environment verification limits. No database or CMS is need
 
 ## Knowledge library
 
-Browse `/posts` to search article text or filter topics. Articles include a table
+Browse `/posts` to search article text. Articles include a table
 of contents, reading time, highlighted/copyable code, related notes and adjacent
 article navigation. See [implementation and verification notes](docs/KNOWLEDGE_LIBRARY.md).
