@@ -17,7 +17,7 @@ export default function Paths() {
     <div className="paths-grid">
       {paths.map(path => <Link className="path-card" key={path.slug} to={`/paths/${path.slug}`}>
         <div><span className="eyebrow">LEARNING SEQUENCE</span><h2>{path.title}</h2></div>
-        <div><p className="path-meta">{path.lessons.length} {path.lessons.length === 1 ? 'LESSON' : 'LESSONS'} · {path.totalMinutes} MIN READ</p><span className="path-action">EXPLORE PATH ↗</span></div>
+        <div><p className="path-meta">{path.lessons.length} {path.lessons.length === 1 ? 'LESSON' : 'LESSONS'}</p><span className="path-action">EXPLORE PATH ↗</span></div>
       </Link>)}
     </div>
     {!paths.length && <p className="path-empty">No learning paths published yet. Add learningPath and lesson metadata to approved articles.</p>}
@@ -27,12 +27,12 @@ export default function Paths() {
     <p className="eyebrow" style={{marginTop:42}}>CURATED SEQUENCE</p>
     <h1 className="paths-heading">{current.title}</h1>
     <p className="paths-intro">Work through these lessons in order. Each lesson opens as a regular article, with its original shareable URL.</p>
-    <p className="path-detail-meta">{current.lessons.length} {current.lessons.length === 1 ? 'LESSON' : 'LESSONS'} · APPROX. {current.totalMinutes} MIN READING</p>
+    <p className="path-detail-meta">{current.lessons.length} {current.lessons.length === 1 ? 'LESSON' : 'LESSONS'}</p>
     <ol className="path-lesson-list">{current.lessons.map((lesson, index) =>
       <li key={lesson.slug}><Link to={`/posts/${lesson.slug}`}>
         <span className="path-lesson-index">{String(index+1).padStart(2,'0')}</span>
         <span className="path-lesson-copy"><strong>{lesson.title}</strong><small>{lesson.description}</small></span>
-        <span className="path-lesson-duration">{lesson.readingMinutes} MIN ↗</span>
+        <span className="path-lesson-duration" aria-hidden="true">↗</span>
       </Link></li>)}</ol>
     <Link className="path-detail-back" to="/paths">← ALL LEARNING PATHS</Link>
   </main>;

@@ -41,13 +41,13 @@ const components: Components = {
 };
 export default function Reader() {
   const { slug } = useParams(); const article = articleIndex.find(item => item.slug === slug);
-  useEffect(() => { if (article) document.title = `${article.title} — Silver Life`; return () => { document.title = 'Silver Life — Build Real Tech Skills'; }; }, [article]);
+  useEffect(() => { if (article) document.title = `${article.title} — Silver Life`; return () => { document.title = 'Silver Life — Trash of Thought'; }; }, [article]);
   if (!article) return <main className="not-found"><span>ERROR 404</span><h1>THIS PATH DOES NOT EXIST.</h1><Link to="/posts">BROWSE THE LIBRARY</Link></main>;
   const position = articleIndex.indexOf(article); const previous = articleIndex[position - 1]; const next = articleIndex[position + 1];
   const related = relatedArticles(articleIndex, article);
   return <main className="article-page" id="main">
     <Link className="article-back" to="/posts">← ALL FIELD NOTES</Link>
-    <div className="post-meta"><time dateTime={article.date}>{article.date}</time><span>{article.readingMinutes} MIN READ</span></div>
+    <div className="post-meta"><time dateTime={article.date}>{article.date}</time></div>
     <h1>{article.title}</h1><p className="article-description">{article.description}</p>
     <ul className="tags" aria-label="Article tags">{article.tags.map(tag => <li key={tag}><Link to={`/posts?q=${encodeURIComponent(tag)}`}>{tag}</Link></li>)}</ul>
     {article.cover && <img className="article-cover" src={article.cover} alt="" />}
