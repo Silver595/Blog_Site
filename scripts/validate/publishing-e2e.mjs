@@ -21,6 +21,11 @@ try {
   await fs.mkdir(repo); await fs.mkdir(path.join(vault, 'Networking'), { recursive: true });
   await fs.mkdir(path.join(vault, 'Attachments'));
   for (const name of ['src', 'public', 'scripts', 'package.json', 'tsconfig.json', 'vite.config.ts', 'index.html']) await fs.cp(path.join(source, name), path.join(repo, name), { recursive: true });
+  // The checked-out repository may already contain published Obsidian articles.
+  // This fixture must start with fresh exporter-owned directories, independent of
+  // the real site's committed content. Only remove copies inside the temp repo.
+  await fs.rm(path.join(repo, 'src/content/posts/obsidian'), { recursive: true, force: true });
+  await fs.rm(path.join(repo, 'public/media/obsidian'), { recursive: true, force: true });
   await fs.symlink(path.join(source, 'node_modules'), path.join(repo, 'node_modules'), 'dir');
   const article = path.join(vault, 'Networking/TCP.md');
   const body = '## Connection setup\n\n[[DNS#Resolution|Read about DNS]]\n\n![[Attachments/diagram.png|Network diagram]]\n\n| Step | Flag |\n| --- | --- |\n| 1 | SYN |\n\n- [x] Verified\n\n```bash\nss -tulpn\n```\n';
