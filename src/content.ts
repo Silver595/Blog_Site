@@ -10,6 +10,8 @@ export type Article = {
   date: string;
   featured: boolean;
   tags: string[];
+  learningPath?: string;
+  lesson?: number;
   cover?: string;
   body: string;
 };
@@ -37,6 +39,8 @@ function decodeArticle(path: string, raw: string): Article | null {
     date: String(metadata.date),
     featured: metadata.featured === true,
     tags: Array.isArray(metadata.tags) ? metadata.tags.map(String) : [],
+    learningPath: typeof metadata.learningPath === 'string' ? metadata.learningPath : undefined,
+    lesson: typeof metadata.lesson === 'number' ? metadata.lesson : undefined,
     cover: metadata.cover ? String(metadata.cover) : undefined,
     body: raw.slice(matched[0].length).trim(),
   };
