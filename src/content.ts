@@ -1,6 +1,8 @@
 import { parse } from "yaml";
 
 export type Article = {
+  publish: true;
+  draft: false;
   slug: string;
   title: string;
   description: string;
@@ -26,10 +28,12 @@ function decodeArticle(path: string, raw: string): Article | null {
   if (!metadata.title || !metadata.date) throw new Error(`Missing title or date: ${path}`);
   const slug = path.split("/").pop()!.replace(/\.md$/i, "");
   return {
+    publish: true,
+    draft: false,
     slug,
     title: String(metadata.title),
     description: String(metadata.description ?? ""),
-    category: String(metadata.category ?? "Notes").toUpperCase(),
+    category: String(metadata.category ?? "Notes"),
     date: String(metadata.date),
     featured: metadata.featured === true,
     tags: Array.isArray(metadata.tags) ? metadata.tags.map(String) : [],
