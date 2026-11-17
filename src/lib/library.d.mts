@@ -6,3 +6,5 @@ export function buildIndex(articles: Article[]): IndexedArticle[];
 export function filterArticles(index: IndexedArticle[], query?: string, topic?: string): IndexedArticle[];
 export function topics(index: IndexedArticle[]): { name: string; count: number }[];
 export function relatedArticles(index: IndexedArticle[], current: IndexedArticle, limit?: number): IndexedArticle[];
+export type LearningPath = { slug: string; title: string; lessons: IndexedArticle[]; totalMinutes: number };
+export function buildLearningPaths(index: IndexedArticle[]): LearningPath[];

@@ -9,6 +9,7 @@ import {
 } from "react-router";
 const Library = lazy(() => import('./components/Library'));
 const Reader = lazy(() => import('./components/Reader'));
+const Paths = lazy(() => import('./components/Paths'));
 import "./index.css";
 
 function Arrow({ diagonal = false }: { diagonal?: boolean }) {
@@ -27,6 +28,7 @@ function Header() {
     <nav className={menuOpen ? "nav-links is-open" : "nav-links"} aria-label="Main navigation">
       <Link to="/" onClick={closeMenu}>HOME</Link>
       <Link to="/posts" onClick={closeMenu}>POSTS</Link>
+      <Link to="/paths" onClick={closeMenu}>LEARNING PATHS</Link>
       <span className="nav-upcoming">ABOUT · NEXT</span>
       <a className="nav-cta" href="https://github.com/Silver595" target="_blank" rel="noopener noreferrer" onClick={closeMenu}>
         GITHUB <Arrow />
@@ -49,6 +51,7 @@ function Home() {
       <div className="hero-bottom">
         <p className="hero-copy">Structured paths. Live environments. Zero filler. Learn the systems behind modern technology by actually building them.</p>
         <Link className="hero-link" to="/posts">EXPLORE THE FIELD NOTES <Arrow diagonal /></Link>
+        <Link className="hero-link" to="/paths">FOLLOW A LEARNING PATH <Arrow diagonal /></Link>
       </div>
     </section>
   </main>;
@@ -66,6 +69,8 @@ const router = createBrowserRouter([{
     { index: true, Component: Home },
     { path: "posts", Component: Library },
     { path: "posts/:slug", Component: Reader },
+    { path: "paths", Component: Paths },
+    { path: "paths/:slug", Component: Paths },
     { path: "*", Component: NotFound },
   ],
 }]);

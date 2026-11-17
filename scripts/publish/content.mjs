@@ -20,7 +20,11 @@ export function metadata(data, filename) {
   if (data.tags !== undefined && (!Array.isArray(data.tags) || data.tags.some(tag => typeof tag !== 'string' || !tag.trim()))) throw new Error(`${filename}: tags must be a list of strings`);
   const slug = data.slug ?? filename.replace(/\.md$/i, '').normalize('NFKD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
   if (typeof slug !== 'string' || !slugPattern.test(slug)) throw new Error(`${filename}: supply an ASCII slug such as tcp-handshake`);
-  // Explicit allowlist: personal frontmatter never gets serialized.
-  return { title: data.title, description: data.description, date: data.date, category: data.category, tags: data.tags ?? [], slug, publish: true, draft: false, featured: data.featured === true };
+  // Explicit allowlist: personal metadata never gets serialized.
+  if (data.learningPath !== undefined && (typeof data.learningPath !== 'string' || !data.learningPath.trim())) throw new Error(`${filename}: learningPath must be a nonempty string`);
+  if (data.lesson !== undefined && (!Number.isSafeInteger(data.lesson) || data.lesson < 1)) throw new Error(`${filename}: lesson must be a positive integer`);
+  if ((data.learningPath === undefined) !== (data.lesson === undefined)) throw new Error(`${filename}: learningPath and lesson must be provided together`);
+  return { title: data.title, description: data.description, date: data.date, category: data.category, tags: data.tags ?? [], slug, publish: true, draft: false, featured: data.featured === true,
+    ...(data.learningPath !== undefined ? { learningPath: data.learningPath.trim(), lesson: data.lesson } : {}) };
 }
 export function serialize(data, body) { return `---\n${stringify(data)}---\n\n${body}`; }
