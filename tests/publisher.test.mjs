@@ -84,3 +84,13 @@ test('validator rejects unapproved content and broken assets', async t => {
   await fs.writeFile(file, serialize({ ...base, publish: false }, 'Private')); await assert.rejects(validate(f.repo), /Unapproved/);
   await fs.writeFile(file, serialize(base, '![Missing](/media/missing.png)')); await assert.rejects(validate(f.repo));
 });
+
+test('malformed approved metadata fails before changing an existing export', async t => {
+  const f = await fixture(t); await f.write('TCP.md'); await publish(f);
+  const before = await fs.readFile(path.join(f.output, 'tcp.md'), 'utf8');
+  for (const meta of [{ publish: 'true' }, { draft: 'false' }, { date: '2026-02-30' }, { title: 42 }]) {
+    await f.write('TCP.md', 'Changed', meta);
+    await assert.rejects(publish(f));
+    assert.equal(await fs.readFile(path.join(f.output, 'tcp.md'), 'utf8'), before);
+  }
+});
