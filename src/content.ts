@@ -22,7 +22,7 @@ function decodeArticle(path: string, raw: string): Article | null {
   const matched = raw.match(/^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/);
   if (!matched) throw new Error(`Missing YAML frontmatter: ${path}`);
   const metadata = parse(matched[1]) as Record<string, unknown> | null;
-  if (!metadata || metadata.publish !== true || metadata.draft === true) return null;
+  if (!metadata || metadata.publish !== true || metadata.draft === true) throw new Error(`Unapproved note in public content: ${path}`);
   if (!metadata.title || !metadata.date) throw new Error(`Missing title or date: ${path}`);
   const slug = path.split("/").pop()!.replace(/\.md$/i, "");
   return {
