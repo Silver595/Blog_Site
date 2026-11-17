@@ -8,10 +8,10 @@ React 19, React Router, Vite, Tailwind CSS 4, TypeScript, React Markdown, YAML. 
 
 ## Local development
 
-Requires Node.js 20.19+ or 22.12+.
+Requires Node.js 22.12+ (CI uses Node 22).
 
 ```bash
-npm install
+npm ci
 npm run dev
 npm run typecheck
 npm run build

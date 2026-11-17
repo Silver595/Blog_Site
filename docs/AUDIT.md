@@ -1,5 +1,8 @@
 # Repository audit — 2026-11-17
 
+Historical initial audit. Installation and verification blockers described below
+were subsequently resolved; see [final verification](FINAL_VERIFICATION.md).
+
 Audited all 12 tracked files at upstream `710b89844bac6608328b48e280551c679e4b56ad`.
 Direct clone failed (GitHub DNS unavailable). Retrieved the exact source through the
 GitHub connector, reconstructed the unsigned upstream commit, and verified both

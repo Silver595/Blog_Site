@@ -1,7 +1,7 @@
 # Obsidian → Silver Life
 
-This first version is implemented but its integration suite/build still needs to
-run in an environment with npm registry access. See [AUDIT.md](AUDIT.md).
+The publishing CLI, private-vault fixture, and production build passed in
+[GitHub Actions](https://github.com/Silver595/Blog_Site/actions/runs/44053395396). See [FINAL_VERIFICATION.md](FINAL_VERIFICATION.md).
 
 ## One-time setup (Omarchy / Arch Linux)
 
@@ -13,13 +13,13 @@ sudo pacman -S --needed git nodejs npm
 git clone https://github.com/Silver595/Blog_Site.git
 cd Blog_Site
 node --version  # Node 22.12+; CI uses Node 22
-npm install
+npm ci
 npm run check
 npm run build
 ```
 
-Once installation succeeds, commit the generated `package-lock.json` and use
-`npm ci` on subsequent checkouts (also change the CI install step to `npm ci`).
+The committed lockfile and temporary Rollup 4.68.4 override make installation
+reproducible. Use `npm ci`; review dependency updates separately.
 Keep your private vault outside the repository, for example
 `/home/silver/Documents/Knowledge`. Never symlink or copy the vault into the repo.
 Do not put `.obsidian`, credentials, or unpublished notes anywhere in this repo.

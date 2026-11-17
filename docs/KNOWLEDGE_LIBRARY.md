@@ -52,16 +52,13 @@ emits the initial large-chunk warning. No framework, backend, or deployment chan
   Clipboard was mocked to check copied text; OS clipboard permission was not tested.
 - Visually inspected mobile library and desktop reader screenshots.
 
-The separate pre-existing `npm run test:publishing` CLI/build harness was attempted
-but blocked by the sandbox's subprocess restrictions (empty subprocess stdout;
-standalone spawn reproduction returned EPERM). It is not reported as passed.
-The in-process publisher integration tests did pass.
+The local sandbox blocked the CLI/build harness subprocesses. It subsequently
+passed in [GitHub Actions](https://github.com/Silver595/Blog_Site/actions/runs/44053395396) on Node 22, together with npm ci, all 32 tests, and the production build.
 
 There is only one real article, so most topics are currently empty and the live
 article has no related/previous/next links. Related ranking uses test fixtures.
 Search is intentionally in-memory; consider a generated search index if corpus
 size grows substantially. No deployment was performed for this milestone.
 
-Pre-existing uncommitted infrastructure changes (Rollup override/lockfile, CI,
-ignore rules, publisher regression and CLI harness) were preserved and were not
-included in the knowledge-library commits.
+Infrastructure changes (Rollup override/lockfile, CI, ignore rules, publisher
+regression and CLI harness) were finalized separately in commit `46740ed`.
