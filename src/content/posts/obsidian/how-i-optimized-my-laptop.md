@@ -1,8 +1,8 @@
 ---
 title: How I Optimized My Laptop
-description: Slashing 65% idle power, eliminating 170k shell wakeups, stopping
-  boot crashes, and freeing 13 GB — focusing only on changes that made a real
-  difference.
+description: Slashing 65% idle power, eliminating 190k shell wakeups, stopping
+  boot crashes, fixing typing jitter, and freeing 13 GB — focusing only on
+  changes that made a real difference.
 date: 2026-11-20
 tags:
   - linux
@@ -251,6 +251,58 @@ Root partition usage dropped from **47% to 43%**, instantly expanding free space
 
 ***
 
+## 9. Hardening Desktop Plugins: Stopping Typing Jitter & 17k Python Spawns
+
+### The Problem
+
+Even after fixing the audio player's polling, two subtle bugs plagued daily desktop use:
+
+1. **Scratchpad Cursor Jumping**: When jotting quick notes in the `silver.scratchpad` bar widget, the cursor would randomly jump or reset while typing, disrupting input and losing focus.
+2. **Hidden Background Python Thrashing**: In `silver.privacy-guard`, the plugin monitored hardware killswitch states for webcam and microphone. However, the plugin was configured to watch a non-existent path (`/run/omarchy-privacy/state.json`) instead of the actual persistent state at `/etc/omarchy/privacy/state.json`. Because the file watcher was dead, the fallback timer ran an active Python script (`omarchy-privacy status --json`) **every 5 seconds, 24/7** — spawning **17,280 Python processes every day** in the background!
+3. **Unnecessary Shell Wrappers**: Lock screen services were executing standard binaries through `bash -c "omarchy-hyprland-session-locked"`, spawning unnecessary shell sub-processes.
+4. **Missing App Launcher Integration**: The Okomart plugin marketplace (`b.okomart`) lacked an active desktop launcher in `~/.local/share/applications/`, making it inaccessible from application menus.
+
+### The Fix
+
+Applying minimalist, root-cause fixes:
+
+1. **Fixed Scratchpad Input Race**:
+   In `silver.scratchpad/BarWidget.qml`, writing debounced changes to disk caused `FileView`'s inotify watcher to fire `onFileChanged: reload()`. This triggered `loadData()`, which blindly reassigned `notesEdit.text = obj.notes` while the user was actively typing.
+
+   I guarded the sync against active focus and removed the recursive file reload:
+
+   ```qml
+   // Only update editor text if user isn't currently focused and typing
+   if (notesEdit && !notesEdit.activeFocus && notesEdit.text !== obj.notes) {
+     notesEdit.text = obj.notes
+   }
+   ```
+2. **Eliminated 17,280 Daily Python Invocations**:
+   In `silver.privacy-guard/BarWidget.qml`, corrected the state path to `/etc/omarchy/privacy/state.json` so native Linux inotify catches changes instantly. Then guarded the timer to only poll when the popup UI is visibly open:
+   ```qml
+   readonly property string stateFilePath: "/etc/omarchy/privacy/state.json"
+
+   Timer {
+     id: pollTimer
+     interval: popupPanel.open ? 1500 : 5000
+     repeat: true
+     running: popupPanel.open // Idle when popup is closed
+     onTriggered: root.refreshStatus()
+   }
+   ```
+3. **Streamlined Process Execution**:
+   In `io.github.smoothpixels.lock-designs/Service.qml`, replaced `["bash", "-c", "omarchy-..."]` wrappers with direct binary calls `["omarchy-hyprland-session-locked"]` and `["omarchy-system-wake"]`.
+4. **Restored Okomart Launcher**:
+   Installed `b.okomart.desktop` into `~/.local/share/applications/` and refreshed the desktop entry database.
+
+### The Noticeable Difference
+
+* **Zero Input Glitches**: Scratchpad typing is silky smooth with zero cursor jumps or focus loss.
+* **17,280 Daily Python Processes Saved**: Privacy Guard sits completely silent at 0% CPU when idle, waking instantly via inotify only when hardware killswitches toggle.
+* **Direct Execution**: Clean sub-process spawning with zero intermediate shell overhead.
+
+***
+
 ## Summary of Real-World Results
 
 | Area                       | Before                                          | After                                    | Real-World Impact                             |
@@ -258,9 +310,10 @@ Root partition usage dropped from **47% to 43%**, instantly expanding free space
 | **Video Playback**         | Screen locks mid-video unless manually toggled  | Auto-inhibits idle on media playback     | Zero manual toggles, never dims during movies |
 | **Idle Power**             | 23W – 28W continuous draw                       | \~8W package power                       | 65% power drop, fans turn off, cooler lap     |
 | **Thermals**               | 48 °C – 52 °C on idle                           | 38 °C – 40 °C on idle                    | 10–12 °C cooler system                        |
-| **Shell Background Load**  | 172,800 bash forks/day (6.5% CPU)               | Native inotify FileView (<0.5% CPU)      | Massive idle wakeup reduction                 |
+| **Shell Background Load**  | 172,800 bash + 17,280 python forks/day          | Native inotify FileView (<0.5% CPU)      | 190,000+ daily process spawns eliminated      |
 | **Reboot Stability**       | Hyprland intermittently failed on restart       | UWSM explicit AMD GPU priority           | Rock-solid startup on every boot              |
 | **Keyring Daemon**         | Repeated SIGABRT crashes on credential requests | Removed colliding duplicate file         | Clean D-Bus secrets without crashes           |
+| **Notes / Scratchpad**     | Cursor jumping & focus loss mid-keystroke       | Focus-guarded inotify sync               | Butter-smooth typing without clobbered text   |
 | **Browser Video Decoding** | 35% CPU software decode (hot fans)              | VCN 3.0 VA-API hardware decode (<4% CPU) | 85% drop in streaming CPU usage               |
 | **Cursor at 144Hz**        | Software composited                             | Native hardware overlay plane            | Silky smooth tracking, zero compositor tax    |
 | **Storage**                | 184 GB available (47% used)                     | 197 GB available (43% used)              | 13 GB storage reclaimed                       |
