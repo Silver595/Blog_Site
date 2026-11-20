@@ -1,7 +1,8 @@
 ---
 title: How I Optimized My Laptop
-description: Slashing 65% idle power, never locking mid-video, and freeing 13 GB
-  — focusing only on changes that made a real difference.
+description: Slashing 65% idle power, eliminating 170k shell wakeups, never
+  locking mid-video, and freeing 13 GB — focusing only on changes that made a
+  real difference.
 date: 2026-11-20
 tags:
   - linux
@@ -23,7 +24,7 @@ When optimizing my laptop (an HP Victus with an AMD Ryzen 7 5800H, NVIDIA RTX 30
 
 If I couldn't see it, hear it, or measure a tangible difference in daily use, it wasn't worth doing.
 
-Here are the four changes that actually transformed my daily experience.
+Here are the changes that actually transformed my daily experience.
 
 ***
 
@@ -84,28 +85,97 @@ This properly activated AMD P-State's `balance_performance` governor. Under this
 
 ***
 
-## 3. Reclaiming 13 GB of Wasted SSD Storage
+## 3. Eliminating 172,800 Idle Bash Spawns/Day in the Desktop Bar
 
 ### The Problem
 
-The NVMe root partition had climbed to 47% utilization. Modern package managers, caches, and containerized runtime layers silently accumulate gigabytes of obsolete data.
+While auditing background processes, I noticed `quickshell` (the desktop bar) was continuously hovering around **6% to 7% CPU usage** even when the laptop was completely idle.
+
+Digging into the plugin source code revealed the culprit in `omatunes/BarWidget.qml`: a QML timer was executing `bash -c cat "$HOME/.cache/omatunes_current_state.json"` **every 500 milliseconds (twice a second, 24/7)** to check if playback state had changed—even when OmaTUNES was closed and offline!
+
+That meant **120 bash process forks per minute**, or **172,800 fork-exec operations every single day**, constantly interrupting CPU sleep states.
 
 ### The Fix
 
-I audited the disk usage to target the biggest offenders without touching any necessary files:
+I replaced the polling bash process with Quickshell's native C++ `FileView`:
 
-1. **Purged Duplicate Flatpak Runtimes**: Obsidian was installed both natively and via Flatpak. Removing the duplicate Flatpak along with its orphaned GNOME 47 runtime layers freed **2.8 GB**.
-2. **Pruned Developer Toolchains**: `mise` had cached multiple inactive Node and toolchain tarballs. Running `mise prune -y` and `mise cache clear` instantly recovered **3.7 GB**.
-3. **Flushed Secondary Browser Caches**: Unused caches from secondary browsers (`~/.cache/chromium` and `~/.cache/BraveSoftware`) were consuming **2.1 GB**.
-4. **Cleared Package Build Residue**: AUR build directories (`yay` cache) held **744 MB** of old compiled packages.
+```qml
+FileView {
+    id: stateWatcher
+    path: Quickshell.env("HOME") + "/.cache/omatunes_current_state.json"
+    watchChanges: true
+    printErrors: false
+    function parseState(raw) {
+        if (!raw || !raw.trim()) return;
+        try {
+            var obj = JSON.parse(raw.trim());
+            if (obj.liked !== undefined) root.isLiked = (obj.liked === true);
+            if (obj.shuffle !== undefined) root.isShuffleOn = (obj.shuffle === true);
+            if (obj.repeat !== undefined) root.isRepeatOn = (obj.repeat === true);
+        } catch(e) {}
+    }
+    onLoaded: parseState(text())
+    onFileChanged: parseState(text())
+}
+```
+
+Instead of launching bash subshells twice a second, the Linux kernel uses `inotify` to notify the bar instantly whenever the file actually changes.
 
 ### The Noticeable Difference
 
-Root partition usage dropped from **47% to 43%**, instantly expanding free space from **184 GB to 197 GB** (**13 GB freed**).
+* **Zero background bash forks**: 172,800 unnecessary process spawns per day completely eliminated.
+* **CPU Idle Load**: `quickshell` CPU consumption dropped from \~6.5% down to near-zero at idle, allowing CPU cores to remain in deep C-states.
 
 ***
 
-## 4. Butter-Smooth 144 Hz Hardware Cursor
+## 4. Hardware Video Acceleration in Zen Browser (VA-API)
+
+### The Problem
+
+Playing 1080p60 or 4K video streams on YouTube and Twitch was causing noticeable heat and CPU spikes of 30% to 40%. The browser was decoding video entirely on the CPU using multi-threaded software decoders (`libvpx` and `dav1d`), ignoring the laptop's dedicated hardware decoding silicon.
+
+### The Fix
+
+In the Zen Browser profile (`~/.config/zen/vw6gacjy.Default (release)/user.js`), I explicitly enabled VA-API hardware decoding:
+
+```javascript
+user_pref("media.ffmpeg.vaapi.enabled", true);
+user_pref("media.hardware-video-decoding.enabled", true);
+user_pref("media.hardware-video-decoding.failed", false);
+user_pref("gfx.webrender.all", true);
+```
+
+### The Noticeable Difference
+
+Video decoding offloaded directly to the AMD Cezanne APU's dedicated VCN 3.0 hardware engine. During 1080p60 video playback, CPU usage plummeted from **\~35% down to under 4%**, keeping the laptop cool and fans silent while watching media.
+
+***
+
+## 5. Dual-GPU Prioritization & NVIDIA Power Management
+
+### The Problem
+
+On a hybrid laptop (AMD integrated GPU + NVIDIA discrete GPU), Hyprland's Aquamarine backend enumerated the NVIDIA RTX 3050 first based on its lower PCI bus address (`0000:01:00.0`).
+
+Even though the internal display was driven by AMD, desktop applications and compositing layers opened file descriptors to `/dev/nvidia0` and `/dev/nvidiactl`, preventing the NVIDIA card from entering runtime power management (RTD3) and leaving it stuck in an active P8 state drawing \~3.14W on idle.
+
+### The Fix
+
+In `~/.config/hypr/hyprland.lua`, I explicitly defined the GPU priority for Aquamarine:
+
+```lua
+hl.env("AQ_DRM_DEVICES", "/dev/dri/by-path/pci-0000:06:00.0-card:/dev/dri/by-path/pci-0000:01:00.0-card")
+```
+
+This guarantees the AMD Cezanne APU is the primary rendering engine, leaving the NVIDIA GPU completely free to enter deep sleep until heavy 3D games or CUDA workloads are explicitly launched via `prime-run`.
+
+### The Noticeable Difference
+
+Eliminates persistent driver handles on the discrete GPU from desktop sessions, maximizing battery conservation.
+
+***
+
+## 6. Butter-Smooth 144 Hz Hardware Cursor
 
 ### The Problem
 
@@ -131,18 +201,42 @@ Mouse movement at 144 Hz became instantly responsive and fluid, completely offlo
 
 ***
 
+## 7. Reclaiming 13 GB of Wasted SSD Storage
+
+### The Problem
+
+The NVMe root partition had climbed to 47% utilization. Modern package managers, caches, and containerized runtime layers silently accumulate gigabytes of obsolete data.
+
+### The Fix
+
+I audited the disk usage to target the biggest offenders without touching any necessary files:
+
+1. **Purged Duplicate Flatpak Runtimes**: Obsidian was installed both natively and via Flatpak. Removing the duplicate Flatpak along with its orphaned GNOME 47 runtime layers freed **2.8 GB**.
+2. **Pruned Developer Toolchains**: `mise` had cached multiple inactive Node and toolchain tarballs. Running `mise prune -y` and `mise cache clear` instantly recovered **3.7 GB**.
+3. **Flushed Secondary Browser Caches**: Unused caches from secondary browsers (`~/.cache/chromium` and `~/.cache/BraveSoftware`) were consuming **2.1 GB**.
+4. **Cleared Package Build Residue**: AUR build directories (`yay` cache) held **744 MB** of old compiled packages.
+
+### The Noticeable Difference
+
+Root partition usage dropped from **47% to 43%**, instantly expanding free space from **184 GB to 197 GB** (**13 GB freed**).
+
+***
+
 ## Summary of Real-World Results
 
-| Area                | Before                                         | After                                | Real-World Impact                             |
-| :------------------ | :--------------------------------------------- | :----------------------------------- | :-------------------------------------------- |
-| **Video Playback**  | Screen locks mid-video unless manually toggled | Auto-inhibits idle on media playback | Zero manual toggles, never dims during movies |
-| **Idle Power**      | 23W – 28W continuous draw                      | \~8W package power                   | 65% power drop, fans turn off, cooler lap     |
-| **Thermals**        | 48 °C – 52 °C on idle                          | 38 °C – 40 °C on idle                | 10–12 °C cooler system                        |
-| **Storage**         | 184 GB available (47% used)                    | 197 GB available (43% used)          | 13 GB storage reclaimed                       |
-| **Cursor at 144Hz** | Software composited                            | Native hardware overlay plane        | Silky smooth tracking, zero compositor tax    |
+| Area                       | Before                                         | After                                    | Real-World Impact                             |
+| :------------------------- | :--------------------------------------------- | :--------------------------------------- | :-------------------------------------------- |
+| **Video Playback**         | Screen locks mid-video unless manually toggled | Auto-inhibits idle on media playback     | Zero manual toggles, never dims during movies |
+| **Idle Power**             | 23W – 28W continuous draw                      | \~8W package power                       | 65% power drop, fans turn off, cooler lap     |
+| **Thermals**               | 48 °C – 52 °C on idle                          | 38 °C – 40 °C on idle                    | 10–12 °C cooler system                        |
+| **Shell Background Load**  | 172,800 bash forks/day (6.5% CPU)              | Native inotify FileView (<0.5% CPU)      | Massive idle wakeup reduction                 |
+| **Browser Video Decoding** | 35% CPU software decode (hot fans)             | VCN 3.0 VA-API hardware decode (<4% CPU) | 85% drop in streaming CPU usage               |
+| **Dual GPU Handling**      | NVIDIA held awake in P8 state                  | AMD iGPU prioritized via AQ_DRM_DEVICES  | Discrete GPU sleeps during desktop tasks      |
+| **Cursor at 144Hz**        | Software composited                            | Native hardware overlay plane            | Silky smooth tracking, zero compositor tax    |
+| **Storage**                | 184 GB available (47% used)                    | 197 GB available (43% used)              | 13 GB storage reclaimed                       |
 
 ***
 
 ## The Takeaway
 
-Stop spending time applying 50 minor tweaks that make no perceptible difference. Focus on what you actually feel, hear, and see: keep your screen awake when watching videos, let your processor downclock when you're not using it, wipe duplicate runtimes, and let your hardware do what it was designed to do.
+Stop spending time applying 50 minor tweaks that make no perceptible difference. Focus on what you actually feel, hear, and see: keep your screen awake when watching videos, let your processor downclock when you're not using it, wipe duplicate runtimes, offload video decoding to dedicated silicon, stop background shell loops from spawning 170k bash processes, and let your hardware do what it was designed to do.
