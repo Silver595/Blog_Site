@@ -1,14 +1,15 @@
 ---
 title: How I Optimized My Laptop
-description: Slashing 65% idle power, eliminating 170k shell wakeups, never
-  locking mid-video, and freeing 13 GB — focusing only on changes that made a
-  real difference.
+description: Slashing 65% idle power, eliminating 170k shell wakeups, stopping
+  boot crashes, and freeing 13 GB — focusing only on changes that made a real
+  difference.
 date: 2026-11-20
 tags:
   - linux
   - hyprland
   - omarchy
   - performance
+  - stability
   - hardware
 slug: how-i-optimized-my-laptop
 publish: true
@@ -24,7 +25,7 @@ When optimizing my laptop (an HP Victus with an AMD Ryzen 7 5800H, NVIDIA RTX 30
 
 If I couldn't see it, hear it, or measure a tangible difference in daily use, it wasn't worth doing.
 
-Here are the changes that actually transformed my daily experience.
+Here are the changes that transformed my system from a warm, battery-draining laptop prone to restart hiccups into a cool, rock-solid daily driver.
 
 ***
 
@@ -128,7 +129,59 @@ Instead of launching bash subshells twice a second, the Linux kernel uses `inoti
 
 ***
 
-## 4. Hardware Video Acceleration in Zen Browser (VA-API)
+## 4. Fixing Hyprland Restart Crashes & Dual-GPU Initialization
+
+### The Problem
+
+Intermittently after a system restart, Hyprland would fail to launch or crash abruptly during session startup.
+
+Auditing system coredumps and boot journals with `coredumpctl` revealed the root cause: Universal Wayland Session Manager (`uwsm`) was starting Hyprland before defining GPU priorities. On hybrid laptops (AMD Cezanne integrated GPU + NVIDIA RTX 3050), Hyprland's backend enumerated the NVIDIA card first based on PCI order. On warm reboots, the NVIDIA card was often unready or in runtime sleep, causing modesetting to fail on the laptop display and triggering watchdog timeouts (`--watchdog-fd 4`).
+
+### The Fix
+
+I configured explicit GPU priority directly in UWSM's session environment (`~/.config/uwsm/env` and `~/.config/uwsm/default`):
+
+```bash
+export AQ_DRM_DEVICES="/dev/dri/by-path/pci-0000:06:00.0-card:/dev/dri/by-path/pci-0000:01:00.0-card"
+```
+
+This ensures UWSM exports the priority **before** the Hyprland binary or Aquamarine backend initializes. The AMD integrated GPU is always bound as primary, leaving the discrete NVIDIA GPU safely asleep until a 3D application is run via `prime-run`.
+
+### The Noticeable Difference
+
+Zero compositor startup crashes or blank screens on reboot. Hyprland launches reliably every single time.
+
+***
+
+## 5. Resolving Hidden GNOME Keyring Daemon Crashes
+
+### The Problem
+
+Core dumps showed repeated `SIGABRT` crashes in `/usr/bin/gnome-keyring-daemon` on login and whenever applications queried credentials:
+
+```text
+gkd_secret_service_get_objects: assertion 'GKD_SECRET_IS_SERVICE (self)' failed
+gkd_secret_objects_lookup_collection: assertion 'GKD_SECRET_IS_OBJECTS (self)' failed
+```
+
+Inspecting `~/.local/share/keyrings/` revealed an obsolete text-format keyring file (`Default_keyring.keyring`) sitting alongside the active binary encrypted keyring (`Default_Keyring.keyring`). Both files claimed identical internal collection names, creating a race condition that crashed the D-Bus secret service.
+
+### The Fix
+
+Disabled the obsolete duplicate file and restarted the daemon:
+
+```bash
+mv ~/.local/share/keyrings/Default_keyring.keyring ~/.local/share/keyrings/Default_keyring.keyring.disabled-backup
+systemctl --user restart gnome-keyring-daemon.service
+```
+
+### The Noticeable Difference
+
+The keyring daemon now starts cleanly in 16ms with zero assertion errors or D-Bus crashes across the entire session.
+
+***
+
+## 6. Hardware Video Acceleration in Zen Browser (VA-API)
 
 ### The Problem
 
@@ -151,31 +204,7 @@ Video decoding offloaded directly to the AMD Cezanne APU's dedicated VCN 3.0 har
 
 ***
 
-## 5. Dual-GPU Prioritization & NVIDIA Power Management
-
-### The Problem
-
-On a hybrid laptop (AMD integrated GPU + NVIDIA discrete GPU), Hyprland's Aquamarine backend enumerated the NVIDIA RTX 3050 first based on its lower PCI bus address (`0000:01:00.0`).
-
-Even though the internal display was driven by AMD, desktop applications and compositing layers opened file descriptors to `/dev/nvidia0` and `/dev/nvidiactl`, preventing the NVIDIA card from entering runtime power management (RTD3) and leaving it stuck in an active P8 state drawing \~3.14W on idle.
-
-### The Fix
-
-In `~/.config/hypr/hyprland.lua`, I explicitly defined the GPU priority for Aquamarine:
-
-```lua
-hl.env("AQ_DRM_DEVICES", "/dev/dri/by-path/pci-0000:06:00.0-card:/dev/dri/by-path/pci-0000:01:00.0-card")
-```
-
-This guarantees the AMD Cezanne APU is the primary rendering engine, leaving the NVIDIA GPU completely free to enter deep sleep until heavy 3D games or CUDA workloads are explicitly launched via `prime-run`.
-
-### The Noticeable Difference
-
-Eliminates persistent driver handles on the discrete GPU from desktop sessions, maximizing battery conservation.
-
-***
-
-## 6. Butter-Smooth 144 Hz Hardware Cursor
+## 7. Butter-Smooth 144 Hz Hardware Cursor
 
 ### The Problem
 
@@ -201,7 +230,7 @@ Mouse movement at 144 Hz became instantly responsive and fluid, completely offlo
 
 ***
 
-## 7. Reclaiming 13 GB of Wasted SSD Storage
+## 8. Reclaiming 13 GB of Wasted SSD Storage
 
 ### The Problem
 
@@ -224,19 +253,20 @@ Root partition usage dropped from **47% to 43%**, instantly expanding free space
 
 ## Summary of Real-World Results
 
-| Area                       | Before                                         | After                                    | Real-World Impact                             |
-| :------------------------- | :--------------------------------------------- | :--------------------------------------- | :-------------------------------------------- |
-| **Video Playback**         | Screen locks mid-video unless manually toggled | Auto-inhibits idle on media playback     | Zero manual toggles, never dims during movies |
-| **Idle Power**             | 23W – 28W continuous draw                      | \~8W package power                       | 65% power drop, fans turn off, cooler lap     |
-| **Thermals**               | 48 °C – 52 °C on idle                          | 38 °C – 40 °C on idle                    | 10–12 °C cooler system                        |
-| **Shell Background Load**  | 172,800 bash forks/day (6.5% CPU)              | Native inotify FileView (<0.5% CPU)      | Massive idle wakeup reduction                 |
-| **Browser Video Decoding** | 35% CPU software decode (hot fans)             | VCN 3.0 VA-API hardware decode (<4% CPU) | 85% drop in streaming CPU usage               |
-| **Dual GPU Handling**      | NVIDIA held awake in P8 state                  | AMD iGPU prioritized via AQ_DRM_DEVICES  | Discrete GPU sleeps during desktop tasks      |
-| **Cursor at 144Hz**        | Software composited                            | Native hardware overlay plane            | Silky smooth tracking, zero compositor tax    |
-| **Storage**                | 184 GB available (47% used)                    | 197 GB available (43% used)              | 13 GB storage reclaimed                       |
+| Area                       | Before                                          | After                                    | Real-World Impact                             |
+| :------------------------- | :---------------------------------------------- | :--------------------------------------- | :-------------------------------------------- |
+| **Video Playback**         | Screen locks mid-video unless manually toggled  | Auto-inhibits idle on media playback     | Zero manual toggles, never dims during movies |
+| **Idle Power**             | 23W – 28W continuous draw                       | \~8W package power                       | 65% power drop, fans turn off, cooler lap     |
+| **Thermals**               | 48 °C – 52 °C on idle                           | 38 °C – 40 °C on idle                    | 10–12 °C cooler system                        |
+| **Shell Background Load**  | 172,800 bash forks/day (6.5% CPU)               | Native inotify FileView (<0.5% CPU)      | Massive idle wakeup reduction                 |
+| **Reboot Stability**       | Hyprland intermittently failed on restart       | UWSM explicit AMD GPU priority           | Rock-solid startup on every boot              |
+| **Keyring Daemon**         | Repeated SIGABRT crashes on credential requests | Removed colliding duplicate file         | Clean D-Bus secrets without crashes           |
+| **Browser Video Decoding** | 35% CPU software decode (hot fans)              | VCN 3.0 VA-API hardware decode (<4% CPU) | 85% drop in streaming CPU usage               |
+| **Cursor at 144Hz**        | Software composited                             | Native hardware overlay plane            | Silky smooth tracking, zero compositor tax    |
+| **Storage**                | 184 GB available (47% used)                     | 197 GB available (43% used)              | 13 GB storage reclaimed                       |
 
 ***
 
 ## The Takeaway
 
-Stop spending time applying 50 minor tweaks that make no perceptible difference. Focus on what you actually feel, hear, and see: keep your screen awake when watching videos, let your processor downclock when you're not using it, wipe duplicate runtimes, offload video decoding to dedicated silicon, stop background shell loops from spawning 170k bash processes, and let your hardware do what it was designed to do.
+Stop spending time applying 50 minor tweaks that make no perceptible difference. Focus on what you actually feel, hear, and see: keep your screen awake when watching videos, let your processor downclock when you're not using it, wipe duplicate runtimes, offload video decoding to dedicated silicon, stop background shell loops from spawning 170k bash processes, lock down your GPU startup order, and let your hardware do what it was designed to do.
